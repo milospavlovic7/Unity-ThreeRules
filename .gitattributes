@@ -1,0 +1,7 @@
+*.asset binary
+*.meta binary
+*.unity binary
+*.prefab binary
+*.png binary
+*.jpg binary
+*.fbx binary
