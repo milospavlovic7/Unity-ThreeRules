@@ -26,7 +26,16 @@ public class PlayerController : GridMover
 
         if (movementInput != Vector2.zero)
         {
-            Move(NormalizeInput(movementInput));
+            // Ako Move vraca bool, koristi ovo da proveris da li je pomeranje uspelo
+            bool moved = Move(NormalizeInput(movementInput));
+
+            if (moved)
+            {
+                // Registruj potez u GameplayManageru
+                if (GameplayManager.Instance != null)
+                    GameplayManager.Instance.RegisterMove();
+            }
+
             StartCoroutine(MoveCooldown());
         }
     }

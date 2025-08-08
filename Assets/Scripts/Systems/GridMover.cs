@@ -25,11 +25,13 @@ public abstract class GridMover : MonoBehaviour
         return groundTilemap.HasTile(gridPosition) && !collisionTilemap.HasTile(gridPosition);
     }
 
-    protected virtual void Move(Vector2 direction)
+    protected virtual bool Move(Vector2 direction)
     {
         if (CanMove(direction))
         {
             transform.position += (Vector3)direction;
+            return true;
         }
+        return false;
     }
 }

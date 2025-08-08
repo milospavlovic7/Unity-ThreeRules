@@ -12,10 +12,10 @@ public class KeyTrigger : MonoBehaviour
         if (collision.CompareTag("Player"))
         {
             isTriggered = true;
-            PlayerInventory.Instance.GainKey();
+            GameplayManager.Instance.Inventory.GainKey();
             Debug.Log("Key gained!");
 
-            Destroy(gameObject); 
+            Destroy(gameObject);
         }
     }
 }

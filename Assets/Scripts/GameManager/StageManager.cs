@@ -5,8 +5,10 @@ public class StageManager : MonoBehaviour
     [Header("Stage Configuration")]
     [SerializeField] private StageData[] stages;
 
-    private int currentStageIndex = 0;
-    private GameObject currentStageInstance;
+    private int currentStageIndex;
+
+    private ProgressManager progressManager;
+    private StageLoader stageLoader;
 
     public static StageManager Instance { get; private set; }
 
@@ -16,20 +18,25 @@ public class StageManager : MonoBehaviour
     {
         if (Instance != null && Instance != this)
         {
-            Destroy(this);
+            Destroy(gameObject);
             return;
         }
         Instance = this;
+
+        progressManager = new ProgressManager();
+        stageLoader = new StageLoader();
     }
 
     private void OnEnable()
     {
-        GameStateController.Instance.OnGameStateChanged += HandleGameStateChanged;
+        if (GameStateController.Instance != null)
+            GameStateController.Instance.OnGameStateChanged += HandleGameStateChanged;
     }
 
     private void OnDisable()
     {
-        GameStateController.Instance.OnGameStateChanged -= HandleGameStateChanged;
+        if (GameStateController.Instance != null)
+            GameStateController.Instance.OnGameStateChanged -= HandleGameStateChanged;
     }
 
     private void HandleGameStateChanged(GameState newState)
@@ -41,11 +48,18 @@ public class StageManager : MonoBehaviour
         else if (newState == GameState.MainMenu || newState == GameState.GameOver)
         {
             UnloadCurrentStage();
+            GameplayManagerHandler.Instance?.DestroyGameplayManager();
         }
     }
 
     private void LoadCurrentStage()
     {
+        if (stages == null || stages.Length == 0)
+        {
+            Debug.LogError("StageManager: No stages configured.");
+            return;
+        }
+
         if (currentStageIndex >= stages.Length)
         {
             Debug.LogWarning("No more stages to load.");
@@ -54,27 +68,22 @@ public class StageManager : MonoBehaviour
             return;
         }
 
-        if (currentStageInstance != null)
-            return;
+        stageLoader.LoadStage(stages[currentStageIndex]);
 
-        var stagePrefab = stages[currentStageIndex].stagePrefab;
-        currentStageInstance = Instantiate(stagePrefab);
+        var gm = GameplayManagerHandler.Instance?.EnsureGameplayManager();
+        gm?.StartLevel(currentStageIndex);
     }
 
     private void UnloadCurrentStage()
     {
-        if (currentStageInstance != null)
-        {
-            Destroy(currentStageInstance);
-            currentStageInstance = null;
-        }
+        stageLoader.UnloadStage();
     }
 
     public void AdvanceStage()
     {
         UnloadCurrentStage();
         currentStageIndex++;
-        SaveProgress();
+        progressManager.SaveProgress(currentStageIndex);
         LoadCurrentStage();
     }
 
@@ -82,31 +91,67 @@ public class StageManager : MonoBehaviour
     {
         UnloadCurrentStage();
         currentStageIndex = 0;
-        SaveProgress();
+        progressManager.SaveProgress(currentStageIndex);
         LoadCurrentStage();
     }
 
     public void ContinueGame()
     {
         UnloadCurrentStage();
+        LoadProgress();
         LoadCurrentStage();
     }
 
-    private void SaveProgress()
+    private void LoadProgress()
     {
-        PlayerPrefs.SetInt("LastStageIndex", currentStageIndex);
-        PlayerPrefs.Save();
-    }
-
-    public void LoadProgress()
-    {
-        currentStageIndex = PlayerPrefs.GetInt("LastStageIndex", 0);
+        currentStageIndex = progressManager.LoadProgress();
     }
 
     public void RestartCurrentStage()
     {
-        UnloadCurrentStage();   
-        SaveProgress();         
-        LoadCurrentStage();     
+        UnloadCurrentStage();
+        progressManager.SaveProgress(currentStageIndex);
+        LoadCurrentStage();
+    }
+}
+
+
+public class StageLoader
+{
+    private GameObject currentStageInstance;
+
+    public void LoadStage(StageData stageData)
+    {
+        if (currentStageInstance != null)
+            return;
+
+        currentStageInstance = Object.Instantiate(stageData.stagePrefab);
+    }
+
+    public void UnloadStage()
+    {
+        if (currentStageInstance != null)
+        {
+            Object.Destroy(currentStageInstance);
+            currentStageInstance = null;
+        }
+    }
+}
+
+
+
+public class ProgressManager
+{
+    private const string LastStageKey = "LastStageIndex";
+
+    public int LoadProgress()
+    {
+        return PlayerPrefs.GetInt(LastStageKey, 0);
+    }
+
+    public void SaveProgress(int stageIndex)
+    {
+        PlayerPrefs.SetInt(LastStageKey, stageIndex);
+        PlayerPrefs.Save();
     }
 }

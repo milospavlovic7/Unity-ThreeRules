@@ -11,11 +11,11 @@ public class GatewayTrigger : MonoBehaviour
 
         if (collision.CompareTag("Player"))
         {
-            if (PlayerInventory.Instance.HasKey)
+            if (GameplayManager.Instance.Inventory.HasKey)
             {
                 isTriggered = true;
                 Debug.Log("Player advances!");
-                PlayerInventory.Instance.RemoveKey(); 
+                GameplayManager.Instance.Inventory.RemoveKey();
                 StageManager.Instance.AdvanceStage();
             }
             else

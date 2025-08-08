@@ -6,6 +6,7 @@ public class GameStateOrchestrator : MonoBehaviour
     public GameObject mainMenuPrefab;
     public GameObject pausedMenuPrefab;
     public GameObject gameOverPrefab;
+    public GameObject playingUIPrefab;
 
     private GameObject currentUI;
 
@@ -41,7 +42,7 @@ public class GameStateOrchestrator : MonoBehaviour
                 currentUI = Instantiate(gameOverPrefab);
                 break;
             case GameState.Playing:
-                // Playing UI se može instancirati ako treba, ili ostaje iz prethodnog
+                currentUI = Instantiate(playingUIPrefab);
                 break;
         }
     }
