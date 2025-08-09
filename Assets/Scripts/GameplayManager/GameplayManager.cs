@@ -1,5 +1,14 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
+
+[Serializable]
+public class LevelSnapshot
+{
+    public List<ItemData> items = new List<ItemData>();
+    public int moves = 0;
+    public bool hasKey = false;
+}
 
 public class GameplayManager : MonoBehaviour
 {
@@ -89,5 +98,46 @@ public class GameplayManager : MonoBehaviour
     private void RaiseInventoryChanged()
     {
         OnInventoryChanged?.Invoke();
+    }
+
+    // -----------------------
+    // Snapshot API
+    // -----------------------
+
+    /// <summary>
+    /// Captures a memory snapshot of current level state (items, moves, hasKey).
+    /// The snapshot stores direct ItemData references (works in-memory).
+    /// </summary>
+    public LevelSnapshot CaptureSnapshot()
+    {
+        var snap = new LevelSnapshot();
+        if (Inventory != null)
+            snap.items = new List<ItemData>(Inventory.Items);
+        else
+            snap.items = new List<ItemData>();
+        snap.moves = movesMade;
+        snap.hasKey = Inventory != null && Inventory.HasKey;
+        return snap;
+    }
+
+    /// <summary>
+    /// Restores state from a snapshot: items, hasKey and moves.
+    /// Fires necessary events so UI updates.
+    /// </summary>
+    public void RestoreSnapshot(LevelSnapshot snapshot)
+    {
+        if (snapshot == null) return;
+
+        if (Inventory != null)
+        {
+            Inventory.SetState(snapshot.items, snapshot.hasKey);
+        }
+
+        movesMade = snapshot.moves;
+        // notify listeners
+        RaiseMovesChanged();
+        RaiseInventoryChanged();
+
+        Debug.Log("GameplayManager: snapshot restored.");
     }
 }

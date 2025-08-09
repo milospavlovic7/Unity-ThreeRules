@@ -1,4 +1,4 @@
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.UI;
 
 public class GameOverUI : MonoBehaviour
@@ -14,9 +14,12 @@ public class GameOverUI : MonoBehaviour
 
     private void OnRetryClicked()
     {
+        // prvo eksplicitno restartuj nivo (reload scene / prefab)
+        StageManager.Instance?.RestartCurrentStage();
+
+        // zatim promeni state na Playing (to će instancirati UI i gameplay)
         GameStateController.Instance.ChangeState(GameState.Playing);
     }
-
 
     private void OnMainMenuClicked()
     {

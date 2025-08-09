@@ -1,9 +1,11 @@
+﻿using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
-using System.Collections.Generic;
 
 public class PlayingUIManager : MonoBehaviour
 {
+    public static PlayingUIManager Instance { get; private set; }
+
     [Header("Info Panel")]
     public Text levelText;
     public Text phaseText;
@@ -29,22 +31,110 @@ public class PlayingUIManager : MonoBehaviour
     private Color selectedColor = Color.yellow;
     private Color normalColor = Color.white;
 
-    private void Start()
+    private Coroutine waitForGameplayCoroutine;
+
+    private void Awake()
     {
-        if (GameplayManager.Instance == null)
+        if (Instance != null && Instance != this)
         {
-            Debug.LogError("GameplayManager instance not found!");
+            Destroy(gameObject);
             return;
         }
+        Instance = this;
+    }
+
+    private void Start()
+    {
+        TryInitializeOrWait();
+    }
+
+    private void OnEnable()
+    {
+        if (GameStateController.Instance != null)
+            GameStateController.Instance.OnGameStateChanged += OnGameStateChanged;
+
+        TryInitializeOrWait();
+    }
+
+    private void OnDisable()
+    {
+        if (GameStateController.Instance != null)
+            GameStateController.Instance.OnGameStateChanged -= OnGameStateChanged;
+
+        CancelWaitCoroutine();
+        UnsubscribeFromInventoryAndGameplay();
+    }
+
+    private void OnDestroy()
+    {
+        if (Instance == this) Instance = null;
+    }
+
+    private void OnGameStateChanged(GameState state)
+    {
+        if (state == GameState.Playing)
+            TryInitializeOrWait();
+        else
+            UnsubscribeFromInventoryAndGameplay();
+    }
+
+    private void TryInitializeOrWait()
+    {
+        if (inventory != null && GameplayManager.Instance != null)
+        {
+            UpdateInventoryUI();
+            UpdateLevelPhaseUI(GameplayManager.Instance.CurrentPhaseIndex, GameplayManager.Instance.CurrentLevelIndex);
+            UpdateMovesUI(GameplayManager.Instance.GetMovesMade());
+            return;
+        }
+
+        if (GameplayManager.Instance != null && GameplayManager.Instance.Inventory != null)
+        {
+            InitializeWithGameplayManager();
+            return;
+        }
+
+        CancelWaitCoroutine();
+        waitForGameplayCoroutine = StartCoroutine(WaitForGameplayManagerAndInit());
+    }
+
+    private IEnumerator WaitForGameplayManagerAndInit()
+    {
+        while (GameplayManager.Instance == null || GameplayManager.Instance.Inventory == null)
+            yield return null;
+
+        yield return null; // wait one frame
+        InitializeWithGameplayManager();
+        waitForGameplayCoroutine = null;
+    }
+
+    private void CancelWaitCoroutine()
+    {
+        if (waitForGameplayCoroutine != null)
+        {
+            StopCoroutine(waitForGameplayCoroutine);
+            waitForGameplayCoroutine = null;
+        }
+    }
+
+    private void InitializeWithGameplayManager()
+    {
+        UnsubscribeFromInventoryAndGameplay();
 
         inventory = GameplayManager.Instance.Inventory;
         if (inventory == null)
         {
-            Debug.LogError("PlayerInventory not found in GameplayManager!");
+            Debug.LogError("PlayingUIManager: Inventory still null during initialization.");
             return;
         }
 
-        // Inicijalno postavljanje UI
+        inventory.OnInventoryChanged += UpdateInventoryUI;
+        inventory.OnItemUsed += OnItemUsed;
+
+        GameplayManager.Instance.OnInventoryChanged += UpdateInventoryUI;
+        GameplayManager.Instance.OnLevelChanged += UpdateLevelPhaseUI;
+        GameplayManager.Instance.OnMovesChanged += UpdateMovesUI;
+
         UpdateInventoryUI();
         UpdateLevelPhaseUI(GameplayManager.Instance.CurrentPhaseIndex, GameplayManager.Instance.CurrentLevelIndex);
         UpdateMovesUI(GameplayManager.Instance.GetMovesMade());
@@ -52,14 +142,17 @@ public class PlayingUIManager : MonoBehaviour
         ClearDescription();
         HideKeySlot();
 
-        if (inventory.Items.Count > 0)
+        if (inventory.Items.Count > 0 && selectedIndex == -1)
             SelectItem(0);
     }
 
-    private void OnDestroy()
+    private void UnsubscribeFromInventoryAndGameplay()
     {
         if (inventory != null)
+        {
             inventory.OnInventoryChanged -= UpdateInventoryUI;
+            inventory.OnItemUsed -= OnItemUsed;
+        }
 
         if (GameplayManager.Instance != null)
         {
@@ -67,10 +160,14 @@ public class PlayingUIManager : MonoBehaviour
             GameplayManager.Instance.OnLevelChanged -= UpdateLevelPhaseUI;
             GameplayManager.Instance.OnMovesChanged -= UpdateMovesUI;
         }
+
+        inventory = null;
     }
 
     public void UpdateInventoryUI()
     {
+        if (inventory == null) return;
+
         var items = inventory.Items;
 
         for (int i = 0; i < itemSlots.Length; i++)
@@ -80,21 +177,17 @@ public class PlayingUIManager : MonoBehaviour
                 var item = items[i];
                 itemSlots[i].itemIcon.sprite = item.sprite;
                 itemSlots[i].itemIcon.enabled = true;
-
                 itemSlots[i].itemText.text = item.itemName;
-
-                // Set slot background color based on selection
-                itemSlots[i].slotBackground.color = (i == selectedIndex) ? selectedColor : normalColor;
             }
             else
             {
                 itemSlots[i].itemIcon.sprite = null;
                 itemSlots[i].itemIcon.enabled = false;
-
                 itemSlots[i].itemText.text = "";
-
-                itemSlots[i].slotBackground.color = normalColor;
             }
+
+            // highlight slot even if it's empty if selectedIndex points to it
+            itemSlots[i].slotBackground.color = (i == selectedIndex) ? selectedColor : normalColor;
         }
 
         UpdateKeySlot();
@@ -102,6 +195,7 @@ public class PlayingUIManager : MonoBehaviour
 
     private void UpdateKeySlot()
     {
+        if (keySlotImage == null || inventory == null) return;
         keySlotImage.enabled = inventory.HasKey;
     }
 
@@ -113,22 +207,21 @@ public class PlayingUIManager : MonoBehaviour
 
     public void UpdateLevelPhaseUI(int phase, int level)
     {
-        if (phaseText != null)
-            phaseText.text = $"Phase: {phase + 1}";
-        if (levelText != null)
-            levelText.text = $"Level: {level + 1}";
+        if (phaseText != null) phaseText.text = $"Phase: {phase + 1}";
+        if (levelText != null) levelText.text = $"Level: {level + 1}";
     }
 
     public void UpdateMovesUI(int moves)
     {
-        if (movesText != null)
-            movesText.text = $"Moves: {moves}";
+        if (movesText != null) movesText.text = $"Moves: {moves}";
     }
 
+    // Modified: allow selecting empty slots (0 .. itemSlots.Length-1)
     public void SelectItem(int index)
     {
-        if (index < 0 || index >= inventory.Items.Count)
+        if (index < 0 || index >= itemSlots.Length)
         {
+            // invalid index -> clear
             ClearDescription();
             selectedIndex = -1;
             UpdateInventoryUI();
@@ -136,45 +229,85 @@ public class PlayingUIManager : MonoBehaviour
         }
 
         selectedIndex = index;
-        descriptionText.text = inventory.Items[index].description;
 
-        // Update slot background colors to highlight selection
+        // if slot has item, show description, otherwise clear
+        if (inventory != null && index < inventory.Items.Count)
+        {
+            if (descriptionText != null)
+                descriptionText.text = inventory.Items[index].description;
+        }
+        else
+        {
+            ClearDescription();
+        }
+
         UpdateInventoryUI();
     }
 
+    // wrapper for input
+    public void SelectItemByIndex(int index) => SelectItem(index);
+
+    public int SelectedIndex => selectedIndex;
+    public int ItemSlotsCount => itemSlots?.Length ?? 0; // used by input controller
+
     public void ClearDescription()
     {
-        descriptionText.text = "";
+        if (descriptionText != null) descriptionText.text = "";
     }
 
-    public void OnItemSlotClicked(int index)
+    public void OnItemSlotClicked(int index) => SelectItem(index);
+
+    private void OnItemUsed(ItemData item)
     {
-        SelectItem(index);
+        if (descriptionText != null)
+            descriptionText.text = $"Activated: {item.itemName}";
+
+        StartCoroutine(ClearDescriptionAfterDelay(1.2f));
     }
 
-    private void OnEnable()
+    private IEnumerator ClearDescriptionAfterDelay(float delay)
     {
-        if (inventory != null)
-            inventory.OnInventoryChanged += UpdateInventoryUI;
+        yield return new WaitForSeconds(delay);
+        ClearDescription();
+    }
 
-        if (GameplayManager.Instance != null)
+    public void AnimateAddItemAt(int index)
+    {
+        if (index < 0 || index >= itemSlots.Length) return;
+        StartCoroutine(AnimateAddCoroutine(itemSlots[index]));
+    }
+
+    private IEnumerator AnimateAddCoroutine(ItemSlotUI slot)
+    {
+        if (slot == null) yield break;
+
+        var rt = slot.itemIcon.rectTransform;
+        Vector3 initialScale = Vector3.zero;
+        Vector3 targetScale = Vector3.one;
+        float duration = 0.18f;
+        float t = 0f;
+
+        slot.itemIcon.enabled = true;
+        rt.localScale = initialScale;
+
+        while (t < duration)
         {
-            GameplayManager.Instance.OnInventoryChanged += UpdateInventoryUI;
-            GameplayManager.Instance.OnLevelChanged += UpdateLevelPhaseUI;
-            GameplayManager.Instance.OnMovesChanged += UpdateMovesUI;
+            t += Time.deltaTime;
+            rt.localScale = Vector3.Lerp(initialScale, targetScale, t / duration);
+            yield return null;
         }
-    }
+        rt.localScale = targetScale;
 
-    private void OnDisable()
-    {
-        if (inventory != null)
-            inventory.OnInventoryChanged -= UpdateInventoryUI;
-
-        if (GameplayManager.Instance != null)
+        Color orig = slot.slotBackground.color;
+        Color flash = Color.Lerp(orig, Color.white, 0.7f);
+        float flashDur = 0.18f;
+        t = 0f;
+        while (t < flashDur)
         {
-            GameplayManager.Instance.OnInventoryChanged -= UpdateInventoryUI;
-            GameplayManager.Instance.OnLevelChanged -= UpdateLevelPhaseUI;
-            GameplayManager.Instance.OnMovesChanged -= UpdateMovesUI;
+            t += Time.deltaTime;
+            slot.slotBackground.color = Color.Lerp(flash, orig, t / flashDur);
+            yield return null;
         }
+        slot.slotBackground.color = orig;
     }
 }

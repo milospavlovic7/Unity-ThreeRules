@@ -13,6 +13,7 @@ GameObject:
   - component: {fileID: 6456093206012116420}
   - component: {fileID: 2680469771656238460}
   - component: {fileID: 5427156149095151197}
+  - component: {fileID: -4808441830252972016}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -173,3 +174,15 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   groundTilemap: {fileID: 0}
   collisionTilemap: {fileID: 0}
+--- !u!114 &-4808441830252972016
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8993585812746542144}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a979bd551247b649b7bb8fe1c44046f, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
