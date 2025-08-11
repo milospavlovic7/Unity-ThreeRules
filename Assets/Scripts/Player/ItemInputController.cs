@@ -35,6 +35,7 @@ public class ItemInputController : MonoBehaviour
     private void SelectItem(int index)
     {
         PlayingUIManager.Instance?.SelectItemByIndex(index);
+        AudioManager.Instance.PlaySFX(4);
     }
 
     private void ActivateSelectedItem()
@@ -45,27 +46,34 @@ public class ItemInputController : MonoBehaviour
 
         int idx = ui.SelectedIndex;
 
-        // dozvoli selektovati prazne slotove; ako je prazan, ne radi ništa
-        if (idx < 0 || idx >= ui.ItemSlotsCount) // ItemSlotsCount ćemo dodati u PlayingUIManager
+        if (idx < 0 || idx >= ui.ItemSlotsCount)
             return;
 
-        // ako postoji item na tom indexu
         var inv = gm.Inventory;
         if (inv == null) return;
 
-        if (idx >= inv.Items.Count)
+        // New: check slot content directly (inventory uses fixed slots, null = empty)
+        if (idx >= inv.Items.Count || inv.Items[idx] == null)
         {
-            // prazno mesto — ništa se ne dešava
             Debug.Log($"Activate: slot {idx + 1} is empty — nothing happens.");
             return;
         }
 
-        var item = inv.UseItemAt(idx, removeAfterUse: true);
-        if (item != null)
+        var item = inv.Items[idx];
+
+        // ONLY allow activation (and removal) for ACTIVE items
+        if (item.itemType != ItemType.Active)
         {
-            Debug.Log($"Activated item (slot #{idx + 1}): {item.itemName}");
-            // Nakon UseItemAt(remove = true), inventory će emitovati OnInventoryChanged i UI će se osvežiti.
-            // Zadržimo selekciju na tom slotu (sada praznom) — PlayingUIManager već to podržava.
+            Debug.Log($"Item {item.itemName} is passive — cannot activate with Space.");
+            return;
+        }
+
+        // Use the item and remove it (active items consumed on use)
+        var used = inv.UseItemAt(idx, removeAfterUse: true);
+        if (used != null)
+        {
+            Debug.Log($"Activated (and consumed) item (slot #{idx + 1}): {used.itemName}");
+            // Selection remains at same index (slot is now empty) — UI will reflect this.
         }
     }
 }

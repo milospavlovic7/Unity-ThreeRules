@@ -27,6 +27,7 @@ public class LavaTrigger : MonoBehaviour
         // Trigger a death / gameover. Choose behavior:
         // Option A: send player to GameOver state:
         GameStateController.Instance.ChangeState(GameState.GameOver);
+        AudioManager.Instance.PlaySFX(2);
 
 
         // Option B: immediate restart stage:

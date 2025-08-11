@@ -1,9 +1,8 @@
-using UnityEngine;
+﻿using UnityEngine;
 
 public class PlayerController : GridMover
 {
     private PlayerMovement controls;
-
     private Vector2 movementInput;
     private bool canMove = true;
 
@@ -26,16 +25,67 @@ public class PlayerController : GridMover
 
         if (movementInput != Vector2.zero)
         {
-            // Ako Move vraca bool, koristi ovo da proveris da li je pomeranje uspelo
-            bool moved = Move(NormalizeInput(movementInput));
+            Vector2 dir = NormalizeInput(movementInput);
+            Vector2Int cellDir = Vector2Int.RoundToInt(dir);
 
-            if (moved)
+            Vector3Int playerCell = groundTilemap.WorldToCell(transform.position);
+            Vector3Int targetCell = playerCell + new Vector3Int(cellDir.x, cellDir.y, 0);
+            Vector3 targetWorldCenter = groundTilemap.GetCellCenterWorld(targetCell);
+
+            Collider2D[] hits = Physics2D.OverlapPointAll(targetWorldCenter);
+
+            Boulder foundBoulder = null;
+            foreach (var h in hits)
             {
-                // Registruj potez u GameplayManageru
-                if (GameplayManager.Instance != null)
-                    GameplayManager.Instance.RegisterMove();
+                if (h == null || h.isTrigger) continue;
+                var b = h.GetComponent<Boulder>();
+                if (b != null)
+                {
+                    foundBoulder = b;
+                    break;
+                }
             }
 
+            var abilities = GetComponent<PlayerAbilities>();
+
+            if (foundBoulder != null)
+            {
+                if (abilities != null && abilities.CanPushBoulders)
+                {
+                    bool pushed = foundBoulder.TryPush(cellDir);
+                    if (pushed)
+                    {
+                        if (Move(cellDir))
+                        {
+                            GameplayManager.Instance?.NotifyPlayerMoved(cellDir);
+                            AudioManager.Instance.PlaySFX(1);
+                        }
+                        StartCoroutine(MoveCooldown());
+                        return;
+                    }
+                    else
+                    {
+                        // Predlog: Dodaj feedback za neuspešan push
+                        Debug.Log("Push failed - blocked.");
+                        StartCoroutine(MoveCooldown());
+                        AudioManager.Instance.PlaySFX(13);
+                        return;
+                    }
+                }
+                else
+                {
+                    // Predlog: Dodaj feedback za nemogućnost guranja
+                    Debug.Log("Cannot push boulder - ability missing.");
+                    StartCoroutine(MoveCooldown());
+                    return;
+                }
+            }
+
+            if (Move(cellDir))
+            {
+                GameplayManager.Instance?.NotifyPlayerMoved(cellDir);
+                AudioManager.Instance.PlaySFX(1);
+            }
             StartCoroutine(MoveCooldown());
         }
     }
@@ -51,7 +101,7 @@ public class PlayerController : GridMover
     private System.Collections.IEnumerator MoveCooldown()
     {
         canMove = false;
-        yield return new WaitForSeconds(0.1f); // prilagodi po potrebi
+        yield return new WaitForSeconds(0.1f);
         canMove = true;
     }
 

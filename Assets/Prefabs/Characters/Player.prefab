@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 6456093206012116420}
   - component: {fileID: 2680469771656238460}
   - component: {fileID: 5427156149095151197}
-  - component: {fileID: -4808441830252972016}
+  - component: {fileID: 6443723641167446857}
   m_Layer: 0
   m_Name: Player
   m_TagString: Player
@@ -76,7 +76,7 @@ SpriteRenderer:
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 879872997
   m_SortingLayer: 1
-  m_SortingOrder: 1
+  m_SortingOrder: 100
   m_Sprite: {fileID: -992043732, guid: 8549d560a2759804eb1dbb5a6d2ac2f6, type: 3}
   m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
@@ -174,7 +174,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   groundTilemap: {fileID: 0}
   collisionTilemap: {fileID: 0}
---- !u!114 &-4808441830252972016
+  moveDuration: 0.15
+--- !u!114 &6443723641167446857
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}

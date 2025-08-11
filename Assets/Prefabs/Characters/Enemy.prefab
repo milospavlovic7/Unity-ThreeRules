@@ -13,9 +13,10 @@ GameObject:
   - component: {fileID: 9029652712363572501}
   - component: {fileID: 7611432630017217025}
   - component: {fileID: 6672251172894211460}
+  - component: {fileID: 4233409469279823701}
   m_Layer: 0
   m_Name: Enemy
-  m_TagString: Untagged
+  m_TagString: Enemy
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
@@ -74,7 +75,7 @@ SpriteRenderer:
   m_AutoUVMaxAngle: 89
   m_LightmapParameters: {fileID: 0}
   m_SortingLayerID: 360332825
-  m_SortingLayer: 2
+  m_SortingLayer: 1
   m_SortingOrder: 1
   m_Sprite: {fileID: -602275537, guid: 8549d560a2759804eb1dbb5a6d2ac2f6, type: 3}
   m_Color: {r: 1, g: 0, b: 0, a: 1}
@@ -173,7 +174,20 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   groundTilemap: {fileID: 0}
   collisionTilemap: {fileID: 0}
+  moveDuration: 0.15
   patrolPoints:
   - {x: -5, y: 6, z: 0}
   - {x: -5, y: 3, z: 0}
   moveSpeed: 1
+--- !u!114 &4233409469279823701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 8031871910035199810}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4add39cdd4f5a144ba563d4b7d101192, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

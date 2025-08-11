@@ -15,6 +15,7 @@ public class GatewayTrigger : MonoBehaviour
             {
                 isTriggered = true;
                 Debug.Log("Player advances!");
+                AudioManager.Instance.PlaySFX(6);
                 GameplayManager.Instance.Inventory.RemoveKey();
                 StageManager.Instance.AdvanceStage();
             }

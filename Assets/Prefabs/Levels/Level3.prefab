@@ -75,7 +75,7 @@ GameObject:
   - component: {fileID: 2732403433361622358}
   - component: {fileID: 1770240135059500454}
   m_Layer: 0
-  m_Name: Colision
+  m_Name: Collision
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -1671,7 +1671,7 @@ GameObject:
   - component: {fileID: 7067869417581875942}
   m_Layer: 0
   m_Name: Level3
-  m_TagString: Untagged
+  m_TagString: Level
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

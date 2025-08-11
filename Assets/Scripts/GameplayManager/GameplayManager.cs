@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -24,8 +24,9 @@ public class GameplayManager : MonoBehaviour
     public PlayerInventory Inventory { get; private set; }
 
     public event Action<int> OnMovesChanged;
-    public event Action<int, int> OnLevelChanged; // phase, level
+    public event Action<int, int> OnLevelChanged;
     public event Action OnInventoryChanged;
+    public event Action<Vector2Int> OnPlayerMoved;
 
     private int movesMade = 0;
 
@@ -59,7 +60,7 @@ public class GameplayManager : MonoBehaviour
         currentPhaseIndex = phaseIndex;
         currentLevelIndex = 0;
         movesMade = 0;
-        Inventory.ClearInventory();
+        Inventory?.ClearInventory();
 
         RaiseLevelChanged();
         RaiseMovesChanged();
@@ -80,64 +81,40 @@ public class GameplayManager : MonoBehaviour
         OnMovesChanged?.Invoke(movesMade);
     }
 
-    public int GetMovesMade()
+    public int GetMovesMade() => movesMade;
+
+    private void RaiseLevelChanged() => OnLevelChanged?.Invoke(currentPhaseIndex, currentLevelIndex);
+    private void RaiseMovesChanged() => OnMovesChanged?.Invoke(movesMade);
+    private void RaiseInventoryChanged() => OnInventoryChanged?.Invoke();
+
+    public void NotifyPlayerMoved(Vector2Int playerMoveDirection)
     {
-        return movesMade;
+        RegisterMove();
+        OnPlayerMoved?.Invoke(playerMoveDirection);
     }
 
-    private void RaiseLevelChanged()
-    {
-        OnLevelChanged?.Invoke(currentPhaseIndex, currentLevelIndex);
-    }
-
-    private void RaiseMovesChanged()
-    {
-        OnMovesChanged?.Invoke(movesMade);
-    }
-
-    private void RaiseInventoryChanged()
-    {
-        OnInventoryChanged?.Invoke();
-    }
-
-    // -----------------------
-    // Snapshot API
-    // -----------------------
-
-    /// <summary>
-    /// Captures a memory snapshot of current level state (items, moves, hasKey).
-    /// The snapshot stores direct ItemData references (works in-memory).
-    /// </summary>
     public LevelSnapshot CaptureSnapshot()
     {
-        var snap = new LevelSnapshot();
-        if (Inventory != null)
-            snap.items = new List<ItemData>(Inventory.Items);
-        else
-            snap.items = new List<ItemData>();
-        snap.moves = movesMade;
-        snap.hasKey = Inventory != null && Inventory.HasKey;
+        var snap = new LevelSnapshot
+        {
+            items = Inventory != null ? new List<ItemData>(Inventory.Items) : new List<ItemData>(),
+            moves = movesMade,
+            hasKey = Inventory != null && Inventory.HasKey
+        };
         return snap;
     }
 
-    /// <summary>
-    /// Restores state from a snapshot: items, hasKey and moves.
-    /// Fires necessary events so UI updates.
-    /// </summary>
     public void RestoreSnapshot(LevelSnapshot snapshot)
     {
         if (snapshot == null) return;
 
-        if (Inventory != null)
-        {
-            Inventory.SetState(snapshot.items, snapshot.hasKey);
-        }
-
+        Inventory?.SetState(snapshot.items, snapshot.hasKey);
         movesMade = snapshot.moves;
-        // notify listeners
+
         RaiseMovesChanged();
         RaiseInventoryChanged();
 
         Debug.Log("GameplayManager: snapshot restored.");
     }
 }
+

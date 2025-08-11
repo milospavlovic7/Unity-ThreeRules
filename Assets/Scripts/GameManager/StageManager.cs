@@ -1,5 +1,7 @@
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+
 
 public class StageManager : MonoBehaviour
 {
@@ -17,6 +19,8 @@ public class StageManager : MonoBehaviour
 
     // snapshots per stage index (in-memory)
     private Dictionary<int, LevelSnapshot> levelSnapshots = new Dictionary<int, LevelSnapshot>();
+
+    [SerializeField] private bool debugMode = false; // Debug flag for logs
 
     private void Awake()
     {
@@ -58,52 +62,91 @@ public class StageManager : MonoBehaviour
 
     private void LoadCurrentStage()
     {
+        // Validate stages array and current stage index
         if (stages == null || stages.Length == 0)
         {
             Debug.LogError("StageManager: No stages configured.");
             return;
         }
 
-        if (currentStageIndex >= stages.Length)
+        if (currentStageIndex >= stages.Length || stages[currentStageIndex] == null)
         {
-            Debug.LogWarning("No more stages to load.");
-            GameStateController.Instance.ChangeState(GameState.GameOver);
-            currentStageIndex = stages.Length - 1;
+            currentStageIndex = 0;
+            progressManager.SaveProgress(currentStageIndex);
+            levelSnapshots.Clear();
+            GameStateController.Instance?.ChangeState(GameState.MainMenu);
             return;
         }
 
-        // LoadStage returns true if we actually instantiated a new stage (vs already loaded)
         bool loadedNew = stageLoader.LoadStage(stages[currentStageIndex]);
 
         var gm = GameplayManagerHandler.Instance?.EnsureGameplayManager();
 
         if (loadedNew)
         {
-            // If there's a saved snapshot for this stage, restore it;
-            // otherwise capture a snapshot of the current state (so retry will restore to this initial state).
             gm?.StartLevel(currentStageIndex);
 
             if (levelSnapshots.TryGetValue(currentStageIndex, out var snap))
             {
                 gm?.RestoreSnapshot(snap);
+                if (debugMode) Debug.Log($"[StageManager] Restored snapshot for stage {currentStageIndex}");
             }
             else
             {
-                // capture current state (so retry/continue will get this)
                 var newSnap = gm?.CaptureSnapshot();
                 if (newSnap != null)
+                {
                     levelSnapshots[currentStageIndex] = newSnap;
+                    if (debugMode) Debug.Log($"[StageManager] Captured new snapshot for stage {currentStageIndex}");
+                }
             }
         }
         else
         {
-            // Stage already loaded — do nothing (this prevents StartLevel being called on resume)
+            if (debugMode) Debug.Log($"[StageManager] Stage {currentStageIndex} already loaded, skipping start level.");
         }
+
+        // Check if PlayingUIManager is already instantiated
+        if (PlayingUIManager.Instance != null)
+        {
+            // If it is, directly update UI
+            UpdateUIForStage();
+        }
+        else
+        {
+            // Otherwise, wait until PlayingUIManager is instantiated
+            StartCoroutine(WaitForUIManagerAndUpdate());
+        }
+    }
+
+    private void UpdateUIForStage()
+    {
+        if (stages[currentStageIndex].isStoryStage)
+        {
+            PlayingUIManager.Instance.DisableUI();
+        }
+        else
+        {
+            PlayingUIManager.Instance.EnableUI();
+        }
+    }
+
+    private IEnumerator WaitForUIManagerAndUpdate()
+    {
+        // Wait until PlayingUIManager is instantiated
+        while (PlayingUIManager.Instance == null)
+        {
+            yield return null; // Wait one frame
+        }
+
+        // Now that PlayingUIManager is available, update the UI based on the stage type
+        UpdateUIForStage();
     }
 
     private void UnloadCurrentStage()
     {
         stageLoader.UnloadStage();
+        if (debugMode) Debug.Log($"[StageManager] Unloaded current stage.");
     }
 
     public void AdvanceStage()
@@ -119,10 +162,7 @@ public class StageManager : MonoBehaviour
         UnloadCurrentStage();
         currentStageIndex = 0;
         progressManager.SaveProgress(currentStageIndex);
-
-        // clear any previous snapshots when starting new game (fresh stage progression)
         levelSnapshots.Clear();
-
         LoadCurrentStage();
     }
 
@@ -136,35 +176,40 @@ public class StageManager : MonoBehaviour
     private void LoadProgress()
     {
         currentStageIndex = progressManager.LoadProgress();
+        if (debugMode) Debug.Log($"[StageManager] Loaded progress, current stage index: {currentStageIndex}");
     }
 
     public void RestartCurrentStage()
     {
         UnloadCurrentStage();
-        // keep snapshot (so we can restore to initial state of this run)
         LoadCurrentStage();
+        if (debugMode) Debug.Log($"[StageManager] Restarted current stage.");
     }
 
-    // Optional: API to explicitly set snapshot for current stage from elsewhere
     public void SaveSnapshotForCurrentStage(LevelSnapshot snapshot)
     {
         if (snapshot == null) return;
         levelSnapshots[currentStageIndex] = snapshot;
+        if (debugMode) Debug.Log($"[StageManager] Saved snapshot for stage {currentStageIndex}");
     }
 }
+
 
 
 public class StageLoader
 {
     private GameObject currentStageInstance;
 
-    /// <summary>
-    /// If stage was actually instantiated returns true; if already loaded returns false.
-    /// </summary>
     public bool LoadStage(StageData stageData)
     {
         if (currentStageInstance != null)
             return false;
+
+        if (stageData == null || stageData.stagePrefab == null)
+        {
+            Debug.LogError("[StageLoader] Invalid stage data or prefab.");
+            return false;
+        }
 
         currentStageInstance = Object.Instantiate(stageData.stagePrefab);
         return true;
@@ -179,7 +224,6 @@ public class StageLoader
         }
     }
 }
-
 
 
 public class ProgressManager

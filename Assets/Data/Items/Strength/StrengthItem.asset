@@ -1,0 +1,19 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fd06bfd06dc79a445b0322a0c017963f, type: 3}
+  m_Name: StrengthItem
+  m_EditorClassIdentifier: 
+  itemName: Strength
+  description: Makes you stronger! You can move boulders!
+  sprite: {fileID: 1494508245, guid: 8549d560a2759804eb1dbb5a6d2ac2f6, type: 3}
+  itemType: 1
+  effect: {fileID: 11400000, guid: 09a12a88bf3d98e4f851cee1d578eca1, type: 2}

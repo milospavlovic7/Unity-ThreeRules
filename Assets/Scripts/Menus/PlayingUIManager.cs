@@ -6,9 +6,11 @@ public class PlayingUIManager : MonoBehaviour
 {
     public static PlayingUIManager Instance { get; private set; }
 
+    private Color selectedColor = Color.yellow;
+    private Color normalColor = Color.white;
+    private Color replaceColor = new Color(0.35f, 0.6f, 1f); // pleasant blue
+
     [Header("Info Panel")]
-    public Text levelText;
-    public Text phaseText;
     public Text movesText;
 
     [Header("Inventory Panel")]
@@ -17,9 +19,9 @@ public class PlayingUIManager : MonoBehaviour
     [System.Serializable]
     public class ItemSlotUI
     {
-        public Image slotBackground;  // ItemSlot image (za menjanje boje selekcije)
-        public Image itemIcon;        // ItemIcon image (sprite)
-        public Text itemText;         // ItemText (naziv itema)
+        public Image slotBackground;
+        public Image itemIcon;
+        public Text itemText;
     }
 
     public ItemSlotUI[] itemSlots = new ItemSlotUI[3];
@@ -27,11 +29,12 @@ public class PlayingUIManager : MonoBehaviour
 
     private PlayerInventory inventory;
     private int selectedIndex = -1;
+    private bool isInReplaceMode = false;
+    private ItemData pendingReplaceNewItem;
+    private System.Action<int> replaceCallback;
 
-    private Color selectedColor = Color.yellow;
-    private Color normalColor = Color.white;
-
-    private Coroutine waitForGameplayCoroutine;
+    public int ItemSlotsCount => itemSlots?.Length ?? 0;
+    public int SelectedIndex => selectedIndex;
 
     private void Awake()
     {
@@ -41,19 +44,14 @@ public class PlayingUIManager : MonoBehaviour
             return;
         }
         Instance = this;
-    }
-
-    private void Start()
-    {
-        TryInitializeOrWait();
+        DisableUI();
     }
 
     private void OnEnable()
     {
         if (GameStateController.Instance != null)
             GameStateController.Instance.OnGameStateChanged += OnGameStateChanged;
-
-        TryInitializeOrWait();
+        TryInitializeInventory();
     }
 
     private void OnDisable()
@@ -61,253 +59,198 @@ public class PlayingUIManager : MonoBehaviour
         if (GameStateController.Instance != null)
             GameStateController.Instance.OnGameStateChanged -= OnGameStateChanged;
 
-        CancelWaitCoroutine();
-        UnsubscribeFromInventoryAndGameplay();
+        UnsubscribeFromInventoryEvents();
     }
 
-    private void OnDestroy()
-    {
-        if (Instance == this) Instance = null;
-    }
+    private void OnDestroy() => Instance = null;
 
     private void OnGameStateChanged(GameState state)
     {
         if (state == GameState.Playing)
-            TryInitializeOrWait();
+            TryInitializeInventory();
         else
-            UnsubscribeFromInventoryAndGameplay();
+            UnsubscribeFromInventoryEvents();
     }
 
-    private void TryInitializeOrWait()
+    private void TryInitializeInventory()
     {
-        if (inventory != null && GameplayManager.Instance != null)
+        if (inventory != null)
         {
             UpdateInventoryUI();
-            UpdateLevelPhaseUI(GameplayManager.Instance.CurrentPhaseIndex, GameplayManager.Instance.CurrentLevelIndex);
-            UpdateMovesUI(GameplayManager.Instance.GetMovesMade());
             return;
         }
 
-        if (GameplayManager.Instance != null && GameplayManager.Instance.Inventory != null)
+        if (GameplayManager.Instance?.Inventory != null)
         {
-            InitializeWithGameplayManager();
-            return;
-        }
-
-        CancelWaitCoroutine();
-        waitForGameplayCoroutine = StartCoroutine(WaitForGameplayManagerAndInit());
-    }
-
-    private IEnumerator WaitForGameplayManagerAndInit()
-    {
-        while (GameplayManager.Instance == null || GameplayManager.Instance.Inventory == null)
-            yield return null;
-
-        yield return null; // wait one frame
-        InitializeWithGameplayManager();
-        waitForGameplayCoroutine = null;
-    }
-
-    private void CancelWaitCoroutine()
-    {
-        if (waitForGameplayCoroutine != null)
-        {
-            StopCoroutine(waitForGameplayCoroutine);
-            waitForGameplayCoroutine = null;
+            inventory = GameplayManager.Instance.Inventory;
+            SubscribeToInventoryEvents();
+            UpdateInventoryUI();
         }
     }
 
-    private void InitializeWithGameplayManager()
+    private void SubscribeToInventoryEvents()
     {
-        UnsubscribeFromInventoryAndGameplay();
-
-        inventory = GameplayManager.Instance.Inventory;
-        if (inventory == null)
-        {
-            Debug.LogError("PlayingUIManager: Inventory still null during initialization.");
-            return;
-        }
-
         inventory.OnInventoryChanged += UpdateInventoryUI;
         inventory.OnItemUsed += OnItemUsed;
-
-        GameplayManager.Instance.OnInventoryChanged += UpdateInventoryUI;
-        GameplayManager.Instance.OnLevelChanged += UpdateLevelPhaseUI;
-        GameplayManager.Instance.OnMovesChanged += UpdateMovesUI;
-
-        UpdateInventoryUI();
-        UpdateLevelPhaseUI(GameplayManager.Instance.CurrentPhaseIndex, GameplayManager.Instance.CurrentLevelIndex);
-        UpdateMovesUI(GameplayManager.Instance.GetMovesMade());
-
-        ClearDescription();
-        HideKeySlot();
-
-        if (inventory.Items.Count > 0 && selectedIndex == -1)
-            SelectItem(0);
     }
 
-    private void UnsubscribeFromInventoryAndGameplay()
+    private void UnsubscribeFromInventoryEvents()
     {
         if (inventory != null)
         {
             inventory.OnInventoryChanged -= UpdateInventoryUI;
             inventory.OnItemUsed -= OnItemUsed;
         }
-
-        if (GameplayManager.Instance != null)
-        {
-            GameplayManager.Instance.OnInventoryChanged -= UpdateInventoryUI;
-            GameplayManager.Instance.OnLevelChanged -= UpdateLevelPhaseUI;
-            GameplayManager.Instance.OnMovesChanged -= UpdateMovesUI;
-        }
-
-        inventory = null;
     }
 
+    // This method is now responsible for updating the inventory UI and clearing description when necessary
     public void UpdateInventoryUI()
     {
         if (inventory == null) return;
 
-        var items = inventory.Items;
+        bool descriptionCleared = true; // We will check if we need to clear the description
 
         for (int i = 0; i < itemSlots.Length; i++)
         {
-            if (i < items.Count)
+            var slotUI = itemSlots[i];
+            if (slotUI == null) continue;
+
+            ItemData item = i < inventory.Items.Count ? inventory.Items[i] : null;
+
+            if (item != null)
             {
-                var item = items[i];
-                itemSlots[i].itemIcon.sprite = item.sprite;
-                itemSlots[i].itemIcon.enabled = true;
-                itemSlots[i].itemText.text = item.itemName;
+                slotUI.itemIcon.sprite = item.sprite;
+                slotUI.itemIcon.enabled = true;
+                slotUI.itemText.text = item.itemName;
+
+                // Set the description of the selected item or clear if empty
+                if (descriptionText != null && i == selectedIndex)
+                {
+                    descriptionText.text = item.description;
+                }
+                descriptionCleared = false;
             }
             else
             {
-                itemSlots[i].itemIcon.sprite = null;
-                itemSlots[i].itemIcon.enabled = false;
-                itemSlots[i].itemText.text = "";
+                slotUI.itemIcon.enabled = false;
+                slotUI.itemText.text = "";
             }
 
-            // highlight slot even if it's empty if selectedIndex points to it
-            itemSlots[i].slotBackground.color = (i == selectedIndex) ? selectedColor : normalColor;
+            // Highlight selected item and handle replace mode color
+            if (isInReplaceMode)
+                slotUI.slotBackground.color = replaceColor;
+            else
+                slotUI.slotBackground.color = (i == selectedIndex) ? selectedColor : normalColor;
         }
 
-        UpdateKeySlot();
-    }
-
-    private void UpdateKeySlot()
-    {
-        if (keySlotImage == null || inventory == null) return;
-        keySlotImage.enabled = inventory.HasKey;
-    }
-
-    private void HideKeySlot()
-    {
         if (keySlotImage != null)
-            keySlotImage.enabled = false;
-    }
+            keySlotImage.enabled = inventory.HasKey;
 
-    public void UpdateLevelPhaseUI(int phase, int level)
-    {
-        if (phaseText != null) phaseText.text = $"Phase: {phase + 1}";
-        if (levelText != null) levelText.text = $"Level: {level + 1}";
-    }
-
-    public void UpdateMovesUI(int moves)
-    {
-        if (movesText != null) movesText.text = $"Moves: {moves}";
-    }
-
-    // Modified: allow selecting empty slots (0 .. itemSlots.Length-1)
-    public void SelectItem(int index)
-    {
-        if (index < 0 || index >= itemSlots.Length)
+        // If no item is selected and description should be cleared, clear it
+        if (descriptionCleared)
         {
-            // invalid index -> clear
             ClearDescription();
-            selectedIndex = -1;
-            UpdateInventoryUI();
-            return;
         }
+    }
+
+    private void ClearDescription() => descriptionText.text = "";
+
+    private void SelectItem(int index)
+    {
+        if (index < 0 || index >= ItemSlotsCount) return;
 
         selectedIndex = index;
+        ItemData selectedItem = inventory.Items[selectedIndex];
+        ClearDescription();
 
-        // if slot has item, show description, otherwise clear
-        if (inventory != null && index < inventory.Items.Count)
+        // Update description if the item is valid
+        if (selectedItem != null)
         {
-            if (descriptionText != null)
-                descriptionText.text = inventory.Items[index].description;
-        }
-        else
-        {
-            ClearDescription();
+            descriptionText.text = selectedItem.description;
         }
 
         UpdateInventoryUI();
     }
 
-    // wrapper for input
-    public void SelectItemByIndex(int index) => SelectItem(index);
-
-    public int SelectedIndex => selectedIndex;
-    public int ItemSlotsCount => itemSlots?.Length ?? 0; // used by input controller
-
-    public void ClearDescription()
+    public void BeginReplaceMode(ItemData newItem, System.Action<int> onSelected)
     {
-        if (descriptionText != null) descriptionText.text = "";
+        if (isInReplaceMode) return;
+
+        isInReplaceMode = true;
+        pendingReplaceNewItem = newItem;
+        replaceCallback = onSelected;
+
+        // Inform player about replacement mode
+        descriptionText.text = $"Inventory full — press 1/2/3 to replace with {newItem.itemName}. Move away to cancel.";
+        UpdateInventoryUI();
     }
 
-    public void OnItemSlotClicked(int index) => SelectItem(index);
-
-    private void OnItemUsed(ItemData item)
+    public void EndReplaceMode()
     {
-        if (descriptionText != null)
-            descriptionText.text = $"Activated: {item.itemName}";
+        isInReplaceMode = false;
+        pendingReplaceNewItem = null;
+        replaceCallback = null;
 
-        StartCoroutine(ClearDescriptionAfterDelay(1.2f));
-    }
-
-    private IEnumerator ClearDescriptionAfterDelay(float delay)
-    {
-        yield return new WaitForSeconds(delay);
         ClearDescription();
+        UpdateInventoryUI();
     }
 
-    public void AnimateAddItemAt(int index)
+    public void SelectItemByIndex(int index)
     {
         if (index < 0 || index >= itemSlots.Length) return;
-        StartCoroutine(AnimateAddCoroutine(itemSlots[index]));
+
+        if (isInReplaceMode)
+        {
+            replaceCallback?.Invoke(index);
+        }
+        else
+        {
+            SelectItem(index);
+        }
     }
 
-    private IEnumerator AnimateAddCoroutine(ItemSlotUI slot)
+    private void OnItemUsed(ItemData usedItem)
     {
-        if (slot == null) yield break;
+        // Clear the description after using an item
+        ClearDescription();
 
-        var rt = slot.itemIcon.rectTransform;
-        Vector3 initialScale = Vector3.zero;
-        Vector3 targetScale = Vector3.one;
-        float duration = 0.18f;
-        float t = 0f;
-
-        slot.itemIcon.enabled = true;
-        rt.localScale = initialScale;
-
-        while (t < duration)
+        if (usedItem == null)
         {
-            t += Time.deltaTime;
-            rt.localScale = Vector3.Lerp(initialScale, targetScale, t / duration);
-            yield return null;
+            SelectItem(-1); // Deselect item if used item is null
         }
-        rt.localScale = targetScale;
-
-        Color orig = slot.slotBackground.color;
-        Color flash = Color.Lerp(orig, Color.white, 0.7f);
-        float flashDur = 0.18f;
-        t = 0f;
-        while (t < flashDur)
+        else
         {
-            t += Time.deltaTime;
-            slot.slotBackground.color = Color.Lerp(flash, orig, t / flashDur);
-            yield return null;
+            // Check if item is still in the selected slot
+            if (inventory.Items[selectedIndex] == null)
+            {
+                // If no item is in the selected slot, clear description
+                ClearDescription();
+            }
+            else
+            {
+                // Keep item selected
+                SelectItem(selectedIndex);
+            }
         }
-        slot.slotBackground.color = orig;
+    }
+
+    public void DisableUI()
+    {
+        movesText.gameObject.SetActive(false);
+        keySlotImage.gameObject.SetActive(false);
+        foreach (var itemSlot in itemSlots)
+        {
+            itemSlot.slotBackground.gameObject.SetActive(false);
+        }
+    }
+
+    public void EnableUI()
+    {
+        movesText.gameObject.SetActive(true);
+        keySlotImage.gameObject.SetActive(true);
+        foreach (var itemSlot in itemSlots)
+        {
+            itemSlot.slotBackground.gameObject.SetActive(true);
+        }
     }
 }
