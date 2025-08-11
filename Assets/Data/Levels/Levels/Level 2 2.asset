@@ -12,5 +12,5 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 189c5b9a262b30c44b83131ec4697509, type: 3}
   m_Name: Level 2 2
   m_EditorClassIdentifier: 
-  stagePrefab: {fileID: 4675071130061149681, guid: 12b6046869341da44b0bc3ec2b191cc0, type: 3}
+  stagePrefab: {fileID: 4675071130061149681, guid: c5a39c6f19551d5469f1e372b57b52d0, type: 3}
   isStoryStage: 0
