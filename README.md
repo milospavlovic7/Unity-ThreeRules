@@ -3,7 +3,6 @@
 A top-down, grid-based retro puzzle-adventure game built in Unity (C#). Reclaim three sacred relics hidden by the ancient rulers by surviving 10 increasingly difficult dungeon levels filled with deadly traps, enemy AI, and strict inventory puzzles.
 
 ### 🌐 Play on Itch.io: [https://milospavlovic7.itch.io/three-rules](https://milospavlovic7.itch.io/three-rules)
-### 💻 Web Showcase: [https://milospavlovic7.github.io/Unity-ThreeRules/](https://milospavlovic7.github.io/Unity-ThreeRules/)
 
 ![Three Rules Preview](preview.png)
 
