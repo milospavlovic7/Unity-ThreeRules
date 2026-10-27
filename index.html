@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Three Rules - Retro 2D Puzzle Adventure</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0c0c0e;
+      --card: #151518;
+      --border: #27272a;
+      --accent: #ff4757;
+      --accent-hover: #ff6b81;
+      --gold: #ffa502;
+      --text: #f4f4f5;
+      --muted: #a1a1aa;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      text-align: center;
+    }
+    .container {
+      max-width: 680px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .badge {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.65rem;
+      color: var(--gold);
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      margin-bottom: 1rem;
+      display: inline-block;
+    }
+    h1 {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 1.8rem;
+      line-height: 1.4;
+      color: #fff;
+      margin-bottom: 1rem;
+    }
+    p.lead {
+      font-size: 1.05rem;
+      line-height: 1.6;
+      color: var(--muted);
+      margin-bottom: 1.8rem;
+    }
+    .preview-box {
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 2rem;
+      background: #000;
+    }
+    .preview-box img {
+      width: 100%;
+      height: auto;
+      display: block;
+      image-rendering: pixelated;
+    }
+    .rules-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+      text-align: left;
+    }
+    .rule-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1rem;
+    }
+    .rule-num {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.7rem;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+    .rule-text {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+    .btn-play {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      background: var(--accent);
+      color: #fff;
+      text-decoration: none;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 0.85rem;
+      padding: 1rem 2rem;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      box-shadow: 0 8px 24px rgba(255, 71, 87, 0.35);
+    }
+    .btn-play:hover {
+      background: var(--accent-hover);
+      transform: translateY(-2px);
+      box-shadow: 0 12px 28px rgba(255, 71, 87, 0.45);
+    }
+    .source-link {
+      display: block;
+      margin-top: 1.5rem;
+      color: var(--muted);
+      font-size: 0.85rem;
+      text-decoration: none;
+      transition: color 0.2s;
+    }
+    .source-link:hover {
+      color: #fff;
+    }
+    @media (max-width: 600px) {
+      .rules-grid { grid-template-columns: 1fr; }
+      h1 { font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="badge">Retro 2D Puzzle-Adventure</div>
+    <h1>Three Rules</h1>
+    <p class="lead">Reclaim three sacred relics hidden by the ancient rulers across 10 dangerous dungeon levels.</p>
+    
+    <div class="preview-box">
+      <img src="preview.png" alt="Three Rules Gameplay Preview">
+    </div>
+
+    <div class="rules-grid">
+      <div class="rule-card">
+        <div class="rule-num">RULE 1</div>
+        <div class="rule-text">Take the key</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">RULE 2</div>
+        <div class="rule-text">Find the exit</div>
+      </div>
+      <div class="rule-card">
+        <div class="rule-num">RULE 3</div>
+        <div class="rule-text">Don't die</div>
+      </div>
+    </div>
+
+    <a href="https://milospavlovic7.itch.io/three-rules" class="btn-play" target="_blank" rel="noopener">
+      ▶ Play on Itch.io
+    </a>
+
+    <a href="https://github.com/milospavlovic7/Unity-ThreeRules" class="source-link">
+      View Unity C# Source Code on GitHub →
+    </a>
+  </div>
+</body>
+</html>
